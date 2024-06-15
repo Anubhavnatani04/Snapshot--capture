@@ -1,0 +1,32 @@
+<!-- public/teacher.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Page</title>
+</head>
+<body>
+    <h1>Teacher Page</h1>
+    <button id="snapshotButton">Get Snapshot</button>
+    <div id="snapshotContainer"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById('snapshotButton').addEventListener('click', () => {
+            socket.emit('requestSnapshot');
+        });
+
+        socket.on('snapshotData', (data) => {
+            const img = document.createElement('img');
+            img.src = data;
+            img.alt = 'Student Snapshot';
+            img.style.maxWidth = '100%';
+            document.getElementById('snapshotContainer').innerHTML = '';
+            document.getElementById('snapshotContainer').appendChild(img);
+        });
+    </script>
+</body>
+</html>
