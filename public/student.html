@@ -11,35 +11,52 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let videoStream;
 
-        async function captureScreen() {
+        // Request screen capture permission and keep the stream active
+        async function requestScreenCapturePermission() {
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({
+                videoStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { mediaSource: 'screen' }
                 });
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                await video.play();
-
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const context = canvas.getContext('2d');
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                const dataUrl = canvas.toDataURL('image/png');
-                socket.emit('snapshot', dataUrl);
-
-                // Stop the stream
-                stream.getTracks().forEach(track => track.stop());
             } catch (error) {
                 console.error('Error capturing screen:', error);
             }
         }
 
+        // Capture the screen and send the snapshot to the server
+        async function captureScreen() {
+            if (!videoStream) return;
+
+            const video = document.createElement('video');
+            video.srcObject = videoStream;
+            await video.play();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/png');
+            socket.emit('snapshot', dataUrl);
+        }
+
         // Listen for snapshot request and capture the screen
         socket.on('takeSnapshot', () => {
             captureScreen();
+        });
+
+        // Request permission on initial connection
+        socket.on('connect', () => {
+            requestScreenCapturePermission();
+        });
+
+        // Cleanup on disconnect
+        socket.on('disconnect', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
         });
     </script>
 </body>
