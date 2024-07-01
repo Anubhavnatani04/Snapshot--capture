@@ -7,24 +7,79 @@
 </head>
 <body>
     <h1>Student Page</h1>
-
+    <div id="loginForm">
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button id="loginButton">Login</button>
+        <br>
+        <br>
+        <a href="http://127.0.0.1:5000" target="_blank">
+            <button id="CreateAcc">
+                Create Account
+            </button>
+        </a>
+    </div>
+    
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let videoStream;
+        let userEmail = '';
+        let studentName = '';
 
-        // Request screen capture permission and keep the stream active
+        document.getElementById('loginButton').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            userEmail = email;
+            const permissionGranted = localStorage.getItem(`${email}_permissionGranted`) === 'true';
+
+            if (!permissionGranted) {
+                const permissionResult = await requestScreenCapturePermission();
+                if (!permissionResult) {
+                    alert('Screen capture permission is required to login.');
+                    return;
+                }
+                localStorage.setItem(`${email}_permissionGranted`, 'true');
+            }
+
+            socket.emit('login', { email, password });
+        });
+
+        socket.on('loginResult', async (result) => {
+            if (result.success) {
+                studentName = result.studentName;
+                document.getElementById('loginForm').style.display = 'none';
+                await initializeScreenCapture();
+            } else {
+                alert('Invalid credentials');
+            }
+        });
+
         async function requestScreenCapturePermission() {
             try {
                 videoStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { mediaSource: 'screen' }
                 });
+                return true;
             } catch (error) {
                 console.error('Error capturing screen:', error);
+                return false;
             }
         }
 
-        // Capture the screen and send the snapshot to the server
+        async function initializeScreenCapture() {
+            if (!videoStream) {
+                videoStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { mediaSource: 'screen' }
+                });
+            }
+            socket.on('takeSnapshot', async (data) => {
+                if (data.studentEmail === userEmail) {
+                    await captureScreen();
+                }
+            });
+        }
+
         async function captureScreen() {
             if (!videoStream) return;
 
@@ -42,17 +97,12 @@
             socket.emit('snapshot', dataUrl);
         }
 
-        // Listen for snapshot request and capture the screen
-        socket.on('takeSnapshot', () => {
-            captureScreen();
-        });
-
-        // Request permission on initial connection
         socket.on('connect', () => {
-            requestScreenCapturePermission();
+            if (userEmail) {
+                socket.emit('checkPermission', { email: userEmail });
+            }
         });
 
-        // Cleanup on disconnect
         socket.on('disconnect', () => {
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
