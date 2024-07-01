@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Student Master{% endblock %}
+
+{% block header %}Welcome to the Student Master Portal{% endblock %}
+
+{% block content %}
+<div class="home-buttons">
+    <button onclick="location.href='{{ url_for('form') }}'">Fill Form</button>
+    <button onclick="location.href='{{ url_for('view_database') }}'">View Database</button>
+</div>
+{% endblock %}

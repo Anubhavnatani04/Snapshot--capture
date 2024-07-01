@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Student - Student Master{% endblock %}
+
+{% block header %}Edit Student Details{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('edit_student', student_id=student[9]) }}" method="post">
+    <div class="form-row">
+        <div class="form-group required">
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" value="{{ student[0] }}" required>
+        </div>
+        <div class="form-group">
+            <label for="middle_name">Middle Name:</label>
+            <input type="text" id="middle_name" name="middle_name" value="{{ student[1] }}">
+        </div>
+        <div class="form-group required">
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" value="{{ student[2] }}" required>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group required">
+            <label for="contact_no">Contact No:</label>
+            <input type="tel" id="contact_no" name="contact_no" value="{{ student[3] }}" required pattern="\d{10}" maxlength="10">
+        </div>
+        <div class="form-group required">
+            <label for="stream">Stream:</label>
+            <select id="stream" name="stream" required>
+                <option value="" disabled>-Select-</option>
+                <option value="Science" {% if student[4] == 'Science' %}selected{% endif %}>Science</option>
+                <option value="Commerce" {% if student[4] == 'Commerce' %}selected{% endif %}>Commerce</option>
+                <option value="Arts" {% if student[4] == 'Arts' %}selected{% endif %}>Arts</option>
+            </select>
+        </div>
+        <div class="form-group required">
+            <label for="standard">Standard:</label>
+            <select id="standard" name="standard" required>
+                <option value="" disabled>-select-</option>
+                <option value="10" {% if student[5] == '10' %}selected{% endif %}>10</option>
+                <option value="11" {% if student[5] == '11' %}selected{% endif %}>11</option>
+                <option value="12" {% if student[5] == '12' %}selected{% endif %}>12</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group required">
+            <label for="division">Division:</label>
+            <select id="division" name="division" required>
+                <option value="" disabled>-select-</option>
+                <option value="A" {% if student[6] == 'A' %}selected{% endif %}>A</option>
+                <option value="B" {% if student[6] == 'B' %}selected{% endif %}>B</option>
+                <option value="C" {% if student[6] == 'C' %}selected{% endif %}>C</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="email_id">Email ID:</label>
+            <input type="email" id="email_id" name="email_id" value="{{ student[7] }}" autocomplete="off">
+        </div>
+        <div class="form-group required">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" value="{{ student[8] }}" required autocomplete="off">
+        </div>
+    </div>
+    <div class="button-container">
+        <input type="submit" value="Submit" class="submit-button">
+    </div>
+</form>
+{% endblock %}
