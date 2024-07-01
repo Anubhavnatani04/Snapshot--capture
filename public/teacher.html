@@ -7,40 +7,37 @@
 </head>
 <body>
     <h1>Teacher Page</h1>
+    <select id="studentDropdown"></select>
     <button id="snapshotButton">Get Snapshot</button>
-    <button id="saveSnapshotButton" style="display:none;">Save Snapshot</button>
-    <div id="snapshotContainer"></div>
-
+    <div id="snapshotResult"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentSnapshotDataUrl = '';
+
+        // Update the dropdown with connected students
+        socket.on('updateStudentList', (students) => {
+            const dropdown = document.getElementById('studentDropdown');
+            dropdown.innerHTML = ''; // Clear existing options
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.email;
+                option.textContent = student.name;
+                dropdown.appendChild(option);
+            });
+        });
 
         document.getElementById('snapshotButton').addEventListener('click', () => {
-            socket.emit('requestSnapshot');
+            const studentEmail = document.getElementById('studentDropdown').value;
+            if (studentEmail) {
+                socket.emit('requestSnapshot', { studentEmail });
+            }
         });
 
         socket.on('snapshotData', (data) => {
-            const img = document.createElement('img');
+            const img = new Image();
             img.src = data;
-            img.alt = 'Student Snapshot';
-            img.style.maxWidth = '100%';
-            document.getElementById('snapshotContainer').innerHTML = '';
-            document.getElementById('snapshotContainer').appendChild(img);
-
-            currentSnapshotDataUrl = data;
-            document.getElementById('saveSnapshotButton').style.display = 'inline-block';
-        });
-
-        document.getElementById('saveSnapshotButton').addEventListener('click', () => {
-            if (currentSnapshotDataUrl) {
-                const a = document.createElement('a');
-                a.href = currentSnapshotDataUrl;
-                a.download = 'snapshot.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+            document.getElementById('snapshotResult').innerHTML = '';
+            document.getElementById('snapshotResult').appendChild(img);
         });
     </script>
 </body>
