@@ -11,15 +11,12 @@
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
         <button id="loginButton">Login</button>
-        <br>
-        <br>
+        <br><br>
         <a href="http://127.0.0.1:5000" target="_blank">
-            <button id="CreateAcc">
-                Create Account
-            </button>
+            <button id="CreateAcc">Create Account</button>
         </a>
     </div>
-    
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -50,6 +47,7 @@
                 studentName = result.studentName;
                 document.getElementById('loginForm').style.display = 'none';
                 await initializeScreenCapture();
+                await captureInitialScreenshot();
             } else {
                 alert('Invalid credentials');
             }
@@ -60,6 +58,7 @@
                 videoStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { mediaSource: 'screen' }
                 });
+                handleStreamEnded(videoStream);
                 return true;
             } catch (error) {
                 console.error('Error capturing screen:', error);
@@ -72,12 +71,31 @@
                 videoStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { mediaSource: 'screen' }
                 });
+                handleStreamEnded(videoStream);
             }
             socket.on('takeSnapshot', async (data) => {
                 if (data.studentEmail === userEmail) {
                     await captureScreen();
                 }
             });
+        }
+
+        async function captureInitialScreenshot() {
+            if (!videoStream) return;
+
+            const video = document.createElement('video');
+            video.srcObject = videoStream;
+            await video.play();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const scalingFactor = window.devicePixelRatio;
+            socket.emit('initialScreenshot', { email: userEmail, dataUrl, scalingFactor });
         }
 
         async function captureScreen() {
@@ -96,6 +114,21 @@
             const dataUrl = canvas.toDataURL('image/png');
             socket.emit('snapshot', dataUrl);
         }
+
+        function handleStreamEnded(stream) {
+            stream.getVideoTracks()[0].addEventListener('ended', () => {
+                socket.emit('screenSharingStopped', { email: userEmail });
+                alert('Screen sharing has stopped. You will be logged out.');
+                location.reload(); // Reload to force re-login
+            });
+        }
+
+        socket.on('initialScreenshotResult', (result) => {
+            if (!result.success) {
+                alert('Please share your entire screen.');
+                location.reload(); // Reload to force re-login
+            }
+        });
 
         socket.on('connect', () => {
             if (userEmail) {
