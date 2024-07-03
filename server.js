@@ -3,6 +3,8 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
+const sharp = require('sharp');
+const robot = require('robotjs');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +39,25 @@ const updateTeacherStudentList = () => {
     io.emit('updateStudentList', studentList);
 };
 
+const isEntireScreen = async (screenshotBuffer, scalingFactor) => {
+    const screenshot = await sharp(screenshotBuffer).metadata();
+    const screenSize = robot.getScreenSize();
+    const screenWidth = screenSize.width * scalingFactor;
+    const screenHeight = screenSize.height * scalingFactor;
+
+    // Allow a small tolerance (e.g., 5 pixels)
+    const tolerance = 5;
+
+    const widthMatches = Math.abs(screenshot.width - screenWidth) <= tolerance;
+    const heightMatches = Math.abs(screenshot.height - screenHeight) <= tolerance;
+
+    console.log(`Screenshot Dimensions: ${screenshot.width}x${screenshot.height}`);
+    console.log(`Screen Dimensions (Adjusted): ${screenWidth}x${screenHeight}`);
+    console.log(`Width Matches: ${widthMatches}, Height Matches: ${heightMatches}`);
+
+    return widthMatches && heightMatches;
+};
+
 io.on('connection', (socket) => {
     console.log('New client connected');
 
@@ -66,24 +87,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('savePermission', (data) => {
-        const { email } = data;
-        db.query('UPDATE students SET permission = 1 WHERE email_id = ?', [email], (err) => {
-            if (err) throw err;
-            console.log(`Permission saved for ${email}`);
-        });
-    });
-
-    socket.on('checkPermission', (data) => {
-        const { email } = data;
-        db.query('SELECT permission FROM students WHERE email_id = ?', [email], (err, results) => {
-            if (err) throw err;
-            if (results.length > 0 && results[0].permission === 1) {
-                socket.emit('loginResult', { success: true, permissionGranted: true, email });
-            }
-        });
-    });
-
     socket.on('requestSnapshot', (data) => {
         const { studentEmail } = data;
         const student = connectedStudents[studentEmail];
@@ -94,6 +97,28 @@ io.on('connection', (socket) => {
 
     socket.on('snapshot', (data) => {
         io.emit('snapshotData', data);
+    });
+
+    socket.on('initialScreenshot', async (data) => {
+        const { email, dataUrl, scalingFactor } = data;
+        const screenshotBuffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+        const isFullScreen = await isEntireScreen(screenshotBuffer, scalingFactor);
+
+        if (isFullScreen) {
+            socket.emit('initialScreenshotResult', { success: true });
+        } else {
+            socket.emit('initialScreenshotResult', { success: false });
+        }
+    });
+
+    socket.on('screenSharingStopped', (data) => {
+        const { email } = data;
+        if (connectedStudents[email]) {
+            delete connectedStudents[email];
+            socket.disconnect(true); // Force disconnect the client
+            updateTeacherStudentList();
+            console.log(`Student ${email} logged out due to stopping screen sharing`);
+        }
     });
 });
 
